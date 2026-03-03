@@ -21,9 +21,97 @@ function setupModals() {
     const modalOverlay = document.getElementById('transactionModal');
     const btnClose = document.getElementById('closeModal');
     const form = document.getElementById('transactionForm');
+    const entitySelect = document.getElementById('t-entity');
+    const accountSelect = document.getElementById('t-account');
+    const typeSelect = document.getElementById('t-type');
+    const categorySelect = document.getElementById('t-category');
+
+    const accountsData = {
+        joaquin: [
+            'CA$ Hipotecario', 'USD Hipotecario', 'CA$ Credicoop',
+            'MercadoPago', 'Billetera (Efectivo)'
+        ],
+        jorgelina: [
+            'CA$ Chubut', 'CC$ Chubut', 'CA$ Galicia', 'USD Galicia',
+            'CC Galicia', 'MercadoPago', 'Naranja', 'Billetera (Efectivo)'
+        ],
+        karlota: [
+            'CA$ Chubut', 'CC$ Chubut', 'CA$ Galicia', 'USD Galicia',
+            'CC Galicia', 'MercadoPago', 'Naranja', 'Billetera (Efectivo)'
+        ]
+    };
+
+    const incomeCategories = {
+        joaquin: ['Sueldo (💼)', 'Comisión (💰)', 'Alquiler (🏠)', 'Inversiones (📈)', 'Regalos (🎁)', 'Otros Ingresos'],
+        jorgelina: ['Sueldo (💼)', 'Inversiones (📈)', 'Regalos (🎁)', 'Otros Ingresos'],
+        karlota: ['Ventas (🧾)', 'Transferencia recibida (💸)', 'Intereses (🏦)', 'Reembolsos (📦)', 'Aporte Extraordinario', 'Otros Ingresos']
+    };
+
+    const expenseCategories = {
+        joaquin: [
+            'Comida (🍔)', 'Transporte (🚗)', 'Vivienda (🏠)', 'Servicios (💡)',
+            'Impuestos (🧾)', 'Salud (🏥)', 'Educación (🎓)', 'Ocio (🎮)',
+            'Compras (🛒)', 'Ropa (👕)', 'Tecnología (💻)', 'Deportes (🏋️)',
+            'Estética (💅)', 'Mascotas (🐶)', 'Pago Tarjeta (💳)', 'Otros (📦)'
+        ],
+        jorgelina: [
+            'Comida (🍔)', 'Transporte (🚗)', 'Vivienda (🏠)', 'Servicios (💡)',
+            'Impuestos (🧾)', 'Salud (🏥)', 'Educación (🎓)', 'Ocio (🎮)',
+            'Compras (🛒)', 'Ropa (👕)', 'Tecnología (💻)', 'Deportes (🏋️)',
+            'Estética (💅)', 'Mascotas (🐶)', 'Pago Tarjeta (💳)', 'Otros (📦)'
+        ],
+        karlota: [
+            'Proveedores Insumos', 'Mercadería Local', 'Alquiler Local (🏠)',
+            'Sueldos (💸)', 'Impuestos (🧾)', 'Servicios (💡)', 'Mantenimiento (📦)', 'Otros Egresos'
+        ]
+    };
+
+    function updateAccounts() {
+        const entity = entitySelect.value;
+        const accounts = accountsData[entity] || [];
+
+        accountSelect.innerHTML = '<option value="" disabled selected>Selecciona una cuenta</option>';
+        accounts.forEach(acc => {
+            const opt = document.createElement('option');
+            opt.value = acc.toLowerCase().replace(/\s+/g, '-');
+            opt.textContent = acc;
+            accountSelect.appendChild(opt);
+        });
+    }
+
+    function updateCategories() {
+        const entity = entitySelect.value;
+        const type = typeSelect.value;
+        let categories = [];
+
+        if (type === 'ingreso') {
+            categories = incomeCategories[entity] || ['Otros Ingresos'];
+        } else if (type === 'egreso') {
+            categories = expenseCategories[entity] || ['Otros Egresos'];
+        } else {
+            categories = ['Retiro de Socio', 'Aporte de Socio'];
+        }
+
+        categorySelect.innerHTML = '<option value="" disabled selected>Selecciona una categoría</option>';
+        categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.toLowerCase().replace(/\s+/g, '-');
+            opt.textContent = cat;
+            categorySelect.appendChild(opt);
+        });
+    }
+
+    entitySelect.addEventListener('change', () => {
+        updateAccounts();
+        updateCategories();
+    });
+
+    typeSelect.addEventListener('change', updateCategories);
 
     // Open Modal with a smooth display and opacity fade
     btnNew.addEventListener('click', () => {
+        updateAccounts(); // Cargar cuentas de la entidad por defecto
+        updateCategories(); // Cargar categorías por defecto
         modalOverlay.style.display = 'flex';
         setTimeout(() => {
             modalOverlay.style.opacity = '1';
@@ -32,21 +120,23 @@ function setupModals() {
 
     // Close Modal
     btnClose.addEventListener('click', closeAndClear);
-    
+
     // Close on overlay click
     modalOverlay.addEventListener('click', (e) => {
-        if(e.target === modalOverlay) closeAndClear();
+        if (e.target === modalOverlay) closeAndClear();
     });
 
     // Submit form (mock saving)
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        
+
         const entity = document.getElementById('t-entity').value;
         const type = document.getElementById('t-type').value;
         const amountValue = parseFloat(document.getElementById('t-amount').value);
         const desc = document.getElementById('t-desc').value;
-        
+        const account = accountSelect.options[accountSelect.selectedIndex]?.text || '';
+        const category = categorySelect.options[categorySelect.selectedIndex]?.text || '';
+
         // Define amount sign based on type
         const amount = (type === 'egreso' || type === 'transferencia') ? -amountValue : amountValue;
 
@@ -54,6 +144,8 @@ function setupModals() {
         transactions.unshift({
             id: Date.now(),
             entity: entity,
+            account: account,
+            category: category,
             type: type,
             amount: amount,
             desc: desc,
@@ -62,10 +154,10 @@ function setupModals() {
 
         // Re-render
         renderTransactions();
-        
+
         // Close modal
         closeAndClear();
-        
+
         // Small feedback
         setTimeout(() => {
             alert('¡Transacción registrada exitosamente en el prototipo!');
@@ -87,19 +179,19 @@ function renderTransactions() {
 
     transactions.forEach(t => {
         let entityColor, entityIcon, entityName;
-        
+
         if (t.entity === 'karlota') {
-             entityColor = 'var(--color-karlota)';
-             entityIcon = 'fa-shop';
-             entityName = 'Lo de Karlota';
+            entityColor = 'var(--color-karlota)';
+            entityIcon = 'fa-shop';
+            entityName = 'Lo de Karlota';
         } else if (t.entity === 'joaquin') {
-             entityColor = 'var(--color-joaquin)';
-             entityIcon = 'fa-user';
-             entityName = 'Joaquín';
+            entityColor = 'var(--color-joaquin)';
+            entityIcon = 'fa-user';
+            entityName = 'Joaquín';
         } else {
-             entityColor = 'var(--color-jorgelina)';
-             entityIcon = 'fa-user';
-             entityName = 'Jorgelina';
+            entityColor = 'var(--color-jorgelina)';
+            entityIcon = 'fa-user';
+            entityName = 'Jorgelina';
         }
 
         const isPositive = t.amount > 0;
@@ -114,7 +206,12 @@ function renderTransactions() {
             </div>
             <div class="t-details">
                 <div class="t-title">${t.desc}</div>
-                <div class="t-subtitle">${entityName} &bull; ${t.date}</div>
+                <div class="t-subtitle">
+                    ${entityName} 
+                    ${t.account ? '&bull; ' + t.account : ''} 
+                    ${t.category ? '&bull; <span style="color: var(--color-joaquin)">' + t.category + '</span>' : ''}
+                    &bull; ${t.date}
+                </div>
             </div>
             <div class="t-amount ${amountClass}">${isPositive ? '+' : ''}${formatMoney(t.amount)}</div>
         `;
@@ -124,7 +221,7 @@ function renderTransactions() {
 
 function initChart() {
     const ctx = document.getElementById('mainChart').getContext('2d');
-    
+
     // Create Gradient Data
     const gradient = ctx.createLinearGradient(0, 0, 0, 350);
     gradient.addColorStop(0, 'rgba(16, 185, 129, 0.4)'); // Emerald Green
@@ -162,7 +259,7 @@ function initChart() {
                     cornerRadius: 8,
                     displayColors: false,
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             let label = context.dataset.label || '';
                             if (label) label += ': ';
                             if (context.parsed.y !== null) {
@@ -180,14 +277,14 @@ function initChart() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: { 
-                        color: 'rgba(255, 255, 255, 0.04)', 
-                        drawBorder: false 
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.04)',
+                        drawBorder: false
                     },
-                    ticks: { 
-                        color: '#94a3b8', 
+                    ticks: {
+                        color: '#94a3b8',
                         font: { family: 'Inter', size: 11 },
-                        callback: function(value) {
+                        callback: function (value) {
                             return '$' + (value / 1000) + 'k';
                         }
                     }
